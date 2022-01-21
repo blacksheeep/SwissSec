@@ -10,6 +10,12 @@ def main(argv):
     res = getListOfFunctions(project)
     print(res)
 
+    function_addresses = getListOfFunctionsAddresses(p)
+
+    for f in function_addresses:
+        func = cfg.kb.functions[f]
+        print(func.name)
+
     
 def getListOfFunctions(project: angr.Project):
 
@@ -18,6 +24,17 @@ def getListOfFunctions(project: angr.Project):
     functions = entry_func.functions_called()
     return functions
 
+def getListOfFunctionsAddresses(project: angr.Project):
+    cfg = project.analyses.CFGFast()
+    functionAddresses = list(cfg.kb.functions)
+    return functionAddresses
+
 
 if __name__ == "__main__":
     main(sys.argv)
+
+
+     #for f in functionAddresses:
+     #     func = cfg.kb.functions[f]
+     #     if func.name == "main":
+     #         print(func

@@ -10,7 +10,7 @@ def main(argv):
     res = getProximityGraph(project)
     print(res)
     lres = list(res)
-    print(list())
+    print(lres)
 
     
 def getProximityGraph(project: angr.Project):
@@ -23,3 +23,8 @@ def getProximityGraph(project: angr.Project):
 
 if __name__ == "__main__":
     main(sys.argv)
+
+
+    #create function 
+    #entry_func = cfg.kb.functions[0x40117D]
+    
