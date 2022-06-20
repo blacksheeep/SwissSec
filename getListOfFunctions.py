@@ -10,11 +10,8 @@ def main(argv):
     res = getListOfFunctions(project)
     print(res)
 
-    function_addresses = getListOfFunctionsAddresses(p)
+    function_addresses = getListOfFunctionsAddresses(project)
 
-    for f in function_addresses:
-        func = cfg.kb.functions[f]
-        print(func.name)
 
     
 def getListOfFunctions(project: angr.Project):
