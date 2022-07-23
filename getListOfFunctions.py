@@ -1,5 +1,6 @@
 import angr
 import os, sys
+import IPython
 
 def main(argv):
     if len(argv) < 2:
@@ -9,22 +10,31 @@ def main(argv):
     project = angr.Project(prog_name, auto_load_libs=False)
     res = getListOfFunctions(project)
     print(res)
+    function_addresses = getListOfAllFunctionsAddresses(project)
 
-    function_addresses = getListOfFunctionsAddresses(project)
+    print(function_addresses)
 
+    IPython.embed()
 
     
 def getListOfFunctions(project: angr.Project):
-
-    cfg = project.analyses.CFGFast()
-    entry_func = cfg.kb.functions[project.entry]
+    entry_func = getEntryFunction(project)
     functions = entry_func.functions_called()
     return functions
 
-def getListOfFunctionsAddresses(project: angr.Project):
+def getListOfCalledFunctions(function: angr.knowledge_plugins.functions.function.Function): 
+     functions = function.functions_called()
+     return functions
+
+def getListOfAllFunctionsAddresses(project: angr.Project):
     cfg = project.analyses.CFGFast()
     functionAddresses = list(cfg.kb.functions)
     return functionAddresses
+
+def getEntryFunction(project: angr.Project):
+    cfg = project.analyses.CFGFast()
+    entry_func = cfg.kb.functions[project.entry]
+    return entry_func
 
 
 if __name__ == "__main__":
