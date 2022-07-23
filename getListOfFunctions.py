@@ -8,22 +8,22 @@ def main(argv):
     
     prog_name = argv[1]
     project = angr.Project(prog_name, auto_load_libs=False)
-    res = getListOfFunctions(project)
-    print(res)
-    function_addresses = getListOfAllFunctionsAddresses(project)
-
-    print(function_addresses)
+    
+    entry = getEntryFunction(project)
+    printAllCalledFunctions(entry)
 
     IPython.embed()
 
     
-def getListOfFunctions(project: angr.Project):
+def getListOfFunctionsInMain(project: angr.Project):
     entry_func = getEntryFunction(project)
     functions = entry_func.functions_called()
     return functions
 
 def getListOfCalledFunctions(function: angr.knowledge_plugins.functions.function.Function): 
      functions = function.functions_called()
+     if len(functions) > 0:
+        functions.pop()
      return functions
 
 def getListOfAllFunctionsAddresses(project: angr.Project):
@@ -35,6 +35,15 @@ def getEntryFunction(project: angr.Project):
     cfg = project.analyses.CFGFast()
     entry_func = cfg.kb.functions[project.entry]
     return entry_func
+
+def printAllCalledFunctions(entry: angr.knowledge_plugins.functions.function.Function):
+    functions = getListOfCalledFunctions(entry)
+    if len(functions) > 0:
+        print(entry.name, "--> 0", functions)
+    for f in functions: 
+        printAllCalledFunctions(f)
+    
+
 
 
 if __name__ == "__main__":
