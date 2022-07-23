@@ -22,8 +22,8 @@ def getListOfFunctionsInMain(project: angr.Project):
 
 def getListOfCalledFunctions(function: angr.knowledge_plugins.functions.function.Function): 
      functions = function.functions_called()
-     if len(functions) > 0:
-        functions.pop()
+     #if len(functions) > 0:
+     #   functions.pop()
      return functions
 
 def getListOfAllFunctionsAddresses(project: angr.Project):
@@ -39,7 +39,7 @@ def getEntryFunction(project: angr.Project):
 def printAllCalledFunctions(entry: angr.knowledge_plugins.functions.function.Function):
     functions = getListOfCalledFunctions(entry)
     if len(functions) > 0:
-        print(entry.name, "--> 0", functions)
+        print(entry.name, "(" + str(hex(entry.addr)) + ")", "--> 0", functions)
     for f in functions: 
         printAllCalledFunctions(f)
     
