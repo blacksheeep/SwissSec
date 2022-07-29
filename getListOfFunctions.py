@@ -48,9 +48,3 @@ def printAllCalledFunctions(entry: angr.knowledge_plugins.functions.function.Fun
 
 if __name__ == "__main__":
     main(sys.argv)
-
-
-     #for f in functionAddresses:
-     #     func = cfg.kb.functions[f]
-     #     if func.name == "main":
-     #         print(func
