@@ -69,6 +69,11 @@ def test3(p):
     print(a.name, a.addr)
     p.hook(a.addr, hook=Hook1(), length=5)
 
+    #s = p.analyses.CallingConvention(a, cfg=cfg, analyze_callsites=True)
+    s = p.analyses.CallingConvention(a, analyze_callsites=True)
+    print ("Analysed function header: ", s.prototype, "Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
+    s.prototype
+
     state = p.factory.full_init_state()
     simgr = p.factory.simgr(state)
     simgr.run()
