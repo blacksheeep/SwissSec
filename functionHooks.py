@@ -82,14 +82,22 @@ def test3(p):
     print(simgr.deadended[0].posix.dumps(1))
 
     IPython.embed()
-    
 
+#check for syscall
+def test4(p):
+    functions = getListOfFunctionsInMain(p)
+    for f in functions:
+        print(f.name, "sim_procedure?", f.is_simprocedure, "syscall?", f.is_syscall, f.is_plt) 
+        #with plt and simprocedure we can catch all functions that do not need to be simulated
+    IPython.embed()
+
+    
 def main(argv): 
     if len(argv) < 2:
         return
     prog_name = argv[1]
     p = angr.Project(prog_name, auto_load_libs=False)
-    test3(p)
+    test4(p)
 
 
 
