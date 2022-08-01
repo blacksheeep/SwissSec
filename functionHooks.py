@@ -1,7 +1,11 @@
+import logging
+logging.getLogger('angr').setLevel('CRITICAL') #level: WARNING, INFO, NOTSET, DEBUG, ERROR, CRITICAL
+
 import angr, claripy
 import sys, os
 import IPython
 import monkeyhex
+
 
 class HookClass(angr.SimProcedure): 
     def run(self, return_values=None):
@@ -71,8 +75,7 @@ def test3(p):
 
     #s = p.analyses.CallingConvention(a, cfg=cfg, analyze_callsites=True)
     s = p.analyses.CallingConvention(a, analyze_callsites=True)
-    print ("Analysed function header: ", s.prototype, "Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
-    s.prototype
+    print ("Analysed function header: ", s.prototype, "| Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
 
     state = p.factory.full_init_state()
     simgr = p.factory.simgr(state)
@@ -91,13 +94,35 @@ def test4(p):
         #with plt and simprocedure we can catch all functions that do not need to be simulated
     IPython.embed()
 
+
+def test5(p):
+    #p.hook(a.addr, hook=Hook1(), length=5)
+    
+    #a = p.loader.find_symbol('add1')
+    cfg = p.analyses.CFGFast()
+    a = cfg.kb.functions['add1']
+    #s = p.analyses.CallingConvention(a, cfg=cfg, analyze_callsites=True)
+    s = p.analyses.CallingConvention(a, analyze_callsites=True)
+    print ("Analysed function header: ", s.prototype, "| Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
+
+    p.hook_symbol('add1', Hook1())
+    state = p.factory.full_init_state()
+    simgr = p.factory.simgr(state)
+    simgr.run()
+
+    print(simgr.stashes)
+    print(simgr.deadended[0].posix.dumps(1))
+
+    IPython.embed()
+
+#TODO TEST MORE HEADER DETECTION
     
 def main(argv): 
     if len(argv) < 2:
         return
     prog_name = argv[1]
     p = angr.Project(prog_name, auto_load_libs=False)
-    test4(p)
+    test5(p)
 
 
 
