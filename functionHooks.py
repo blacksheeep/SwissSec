@@ -75,7 +75,8 @@ def test3(p):
 
     #s = p.analyses.CallingConvention(a, cfg=cfg, analyze_callsites=True)
     s = p.analyses.CallingConvention(a, analyze_callsites=True)
-    print ("Analysed function header: ", s.prototype, "| Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
+    print ("Analysed function header: ", s.prototype)
+    print("| Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
 
     state = p.factory.full_init_state()
     simgr = p.factory.simgr(state)
@@ -100,12 +101,16 @@ def test5(p):
     
     #a = p.loader.find_symbol('add1')
     cfg = p.analyses.CFGFast()
-    a = cfg.kb.functions['add1']
-    #s = p.analyses.CallingConvention(a, cfg=cfg, analyze_callsites=True)
-    s = p.analyses.CallingConvention(a, analyze_callsites=True)
-    print ("Analysed function header: ", s.prototype, "| Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
+    a = cfg.kb.functions['add']
+    s = p.analyses.CallingConvention(a, cfg=cfg, analyze_callsites=True)
+    #s = p.analyses.CallingConvention(a, analyze_callsites=True)
 
-    p.hook_symbol('add1', Hook1())
+    print ("Analysed function header: ", s.prototype)
+
+    IPython.embed()
+    print("| Size of ret:", s.prototype.returnty.with_arch(p.arch).size)
+
+    p.hook_symbol('add', Hook1())
     state = p.factory.full_init_state()
     simgr = p.factory.simgr(state)
     simgr.run()
@@ -115,6 +120,15 @@ def test5(p):
 
     IPython.embed()
 
+
+#test calling convention recovery
+def test6(p):
+    cfg = p.analyses.CFGFast()
+    a = p.analyses.CompleteCallingConventions(recover_variables=True, force=True, cfg=cfg, analyze_callsites=True)
+    print(a.kb.functions["add1"].prototype)
+    IPython.embed()
+
+
 #TODO TEST MORE HEADER DETECTION
     
 def main(argv): 
@@ -122,7 +136,7 @@ def main(argv):
         return
     prog_name = argv[1]
     p = angr.Project(prog_name, auto_load_libs=False)
-    test5(p)
+    test6(p)
 
 
 
