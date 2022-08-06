@@ -1,17 +1,17 @@
 import angr
 import os, sys
-from Analyser import Analyser
+from Analyzer import Analyzer
 
 def main(argv):
     if len(argv) < 2:
         return
-    a = Analyser(argv[1])
-    a.printAllCalledFunctions()
+    a = Analyzer(argv[1])
+    a.printAllCalledFunctions(exclude_sysfunc=True)
 
-    print(a.getEntryFunction())
-    print(a.getListOfAllFunctionsAddresses())
-    print(a.getListOfCalledFunctions(a.function_prototypes.kb.functions["add1"]))
-    print(a.getListOfFunctionsInMain())
+    #print(a.getEntryFunction())
+    #print(a.getListOfAllFunctionsAddresses())
+    #print(a.getListOfCalledFunctions(a.function_prototypes.kb.functions["add1"]))
+    #print(a.getListOfFunctionsInMain())
     
 
 if __name__ == "__main__":

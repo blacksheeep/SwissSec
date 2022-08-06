@@ -136,7 +136,7 @@ def main(argv):
         return
     prog_name = argv[1]
     p = angr.Project(prog_name, auto_load_libs=False)
-    test6(p)
+    test4(p)
 
 
 
