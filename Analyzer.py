@@ -53,7 +53,8 @@ class Analyzer:
             entry = self.getEntryFunction()
         functions =self.getListOfCalledFunctions(entry)
         if(exclude_sysfunc):
-            functions = list(filter(lambda f: f.is_syscall or f.is_plt or f.is_simprocedure, functions))
+            functions = list(filter(lambda f: not f.is_syscall and not f.is_plt and not f.is_simprocedure, functions))
+            print(functions)
 
         for f in functions:
             self.runFunctionBasedAnalysis(analyzer, entry=f, exclude_sysfunc=exclude_sysfunc)
@@ -68,6 +69,10 @@ class Analyzer:
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_MEMORY)
         state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
         simgr = self.project.factory.simgr(state, save_unconstrained=True, veritesting=True)
+        print("Trying to execute function:", entry.name)
         simgr.run(until=lambda sm: analyzer.check(sm))
+        
         #unhook functions
+        for f in functions: 
+            self.project.unhook(f.addr)
             
