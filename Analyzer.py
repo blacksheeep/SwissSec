@@ -3,10 +3,14 @@ logging.getLogger('angr').setLevel('CRITICAL') #level: WARNING, INFO, NOTSET, DE
 
 import angr, claripy
 
+from Analyszer_Hook import Analyszer_Hook
+from Vulnerability_Analyser import Vulnerability_Analyser
+
 class Analyzer: 
 
     def __init__(self, prog_name: str, auto_load_libs=False, analyze_uncalled=False):
         self.project = angr.Project(prog_name, auto_load_libs=auto_load_libs)
+        self.cc = self.project.factory.cc()
         self.analyze_uncalled = analyze_uncalled #todo if enabled also analyse uncalled functions for weaknesses
         self.cfg = self.project.analyses.CFGFast()
         self.function_prototypes = self.project.analyses.CompleteCallingConventions(recover_variables=True,
@@ -30,7 +34,7 @@ class Analyzer:
         entry_func = self.cfg.kb.functions[self.project.entry]
         return entry_func
 
-    def printAllCalledFunctions(self, entry: angr.knowledge_plugins.functions.function.Function=None, exclude_sysfunc=False) -> None:
+    def printAllCalledFunctions(self, entry: angr.knowledge_plugins.functions.function.Function=None, exclude_sysfunc=True) -> None:
         if entry is None:
             entry = self.getEntryFunction()
         functions =self.getListOfCalledFunctions(entry)
@@ -43,22 +47,27 @@ class Analyzer:
                     continue
             self.printAllCalledFunctions(f, exclude_sysfunc=exclude_sysfunc)
 
-    
+    def runFunctionBasedAnalysis(self, analyzer: Vulnerability_Analyser, entry: angr.knowledge_plugins.functions.function.Function=None, 
+                                 exclude_sysfunc=True) -> True:
+        if entry is None:
+            entry = self.getEntryFunction()
+        functions =self.getListOfCalledFunctions(entry)
+        if(exclude_sysfunc):
+            functions = list(filter(lambda f: f.is_syscall or f.is_plt or f.is_simprocedure, functions))
 
-class Vulnerability_Analyser:
+        for f in functions:
+            self.runFunctionBasedAnalysis(analyzer, entry=f, exclude_sysfunc=exclude_sysfunc)
 
-    def __init__(self, project: angr.Project):
-        self.project = project
-        self.stack_chk_fail_addr = self.project.loader.find_symbol("__stack_chk_fail").rebased_addr
+        #hook functions called by current function
+        for f in functions: 
+            self.project.hook(f.addr, hook=Analyszer_Hook(), length=5)
 
-    def check_unconstrained(self, state: angr.SimState):
-        if state.solver.symbolic(state.regs.pc):
-            return True
-        return False
-
-    def stack_smashing_checker(self, state: angr.SimState) -> bool:
-        if state.addr == self.stack_chk_fail_addr:
-            return True
-        return False
-
-
+        #execute function symbolically
+        state = self.project.factory.call_state(entry.addr, cc=self.cc)
+        state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_REGISTERS)
+        state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_MEMORY)
+        state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
+        simgr = self.project.factory.simgr(state, save_unconstrained=True, veritesting=True)
+        simgr.run(until=lambda sm: analyzer.check(sm))
+        #unhook functions
+            
