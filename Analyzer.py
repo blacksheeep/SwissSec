@@ -16,6 +16,8 @@ class Analyzer:
         self.function_prototypes = self.project.analyses.CompleteCallingConventions(recover_variables=True,
                                                                                     force=True, cfg=self.cfg, 
                                                                                     analyze_callsites=True)
+        self.alread_executed = set()
+        self.bugs = []
 
     def getListOfFunctionsInMain(self):
         entry_func = self.getEntryFunction()
@@ -48,16 +50,20 @@ class Analyzer:
             self.printAllCalledFunctions(f, exclude_sysfunc=exclude_sysfunc)
 
     def runFunctionBasedAnalysis(self, analyzer: Vulnerability_Analyser, entry: angr.knowledge_plugins.functions.function.Function=None, 
-                                 exclude_sysfunc=True) -> True:
+                                 exclude_sysfunc=True, stop_at_bug=False):
         if entry is None:
             entry = self.getEntryFunction()
         functions =self.getListOfCalledFunctions(entry)
         if(exclude_sysfunc):
             functions = list(filter(lambda f: not f.is_syscall and not f.is_plt and not f.is_simprocedure, functions))
-            print(functions)
 
         for f in functions:
-            self.runFunctionBasedAnalysis(analyzer, entry=f, exclude_sysfunc=exclude_sysfunc)
+            bug = self.runFunctionBasedAnalysis(analyzer, entry=f, exclude_sysfunc=exclude_sysfunc)
+            if bug and stop_at_bug: 
+                return bug
+
+        if entry.addr in self.alread_executed:
+            return
 
         #hook functions called by current function
         for f in functions: 
@@ -68,11 +74,20 @@ class Analyzer:
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_REGISTERS)
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_MEMORY)
         state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
-        simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True)
+        simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True) # apparently veritesting makes some problems here
         print("----Execute function:", entry.name)
-        simgr.run(until=lambda sm: analyzer.check(sm))
-
+        ret_sm = simgr.run(until=lambda sm: analyzer.check(sm)) #Fixme, if stop_at_bug false, continue to find all bugs
+        self.alread_executed.add(entry.addr)
+        
         #unhook functions
         for f in functions: 
             self.project.unhook(f.addr)
+
+        bug = analyzer.check(ret_sm)
+        if bug:
+            print("Found a bug", bug[0])
+            self.bugs.append(bug)
+            return bug
+
+        return None
             

@@ -9,7 +9,4 @@ class Analyszer_Hook(angr.SimProcedure):
     #    counter = 0
 
     def run(self):
-        #print("function hooked")
-        print("add1 hooked")
-        self.state.regs.rax = claripy.BVS("ret1", 32)	
-        print(self.state.regs.rax)
+        self.state.regs.rax = claripy.BVS("ret1", 32)
