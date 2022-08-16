@@ -68,10 +68,10 @@ class Analyzer:
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_REGISTERS)
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_MEMORY)
         state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
-        simgr = self.project.factory.simgr(state, save_unconstrained=True, veritesting=True)
-        print("Trying to execute function:", entry.name)
+        simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True)
+        print("----Execute function:", entry.name)
         simgr.run(until=lambda sm: analyzer.check(sm))
-        
+
         #unhook functions
         for f in functions: 
             self.project.unhook(f.addr)
