@@ -18,6 +18,9 @@ class Analyzer:
                                                                                     analyze_callsites=True)
         self.alread_executed = set()
         self.bugs = []
+        #TODO, iteratively increase looper
+        self.loop_depth = 1
+        self.technique = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=self.loop_depth)#0, limit_concrete_loops=False)
 
     def getListOfFunctionsInMain(self):
         entry_func = self.getEntryFunction()
@@ -47,6 +50,8 @@ class Analyzer:
             if(exclude_sysfunc):
                 if (f.is_syscall or f.is_plt or f.is_simprocedure):
                     continue
+            if entry.addr == f.addr: #prevent recursion
+                return
             self.printAllCalledFunctions(f, exclude_sysfunc=exclude_sysfunc)
 
     def runFunctionBasedAnalysis(self, analyzer: Vulnerability_Analyser, entry: angr.knowledge_plugins.functions.function.Function=None, 
@@ -58,6 +63,8 @@ class Analyzer:
             functions = list(filter(lambda f: not f.is_syscall and not f.is_plt and not f.is_simprocedure, functions))
 
         for f in functions:
+            if entry.addr == f.addr: 
+                return None
             bug = self.runFunctionBasedAnalysis(analyzer, entry=f, exclude_sysfunc=exclude_sysfunc)
             if bug and stop_at_bug: 
                 return bug
@@ -70,11 +77,15 @@ class Analyzer:
             self.project.hook(f.addr, hook=Analyszer_Hook(), length=5)
 
         #execute function symbolically
-        state = self.project.factory.call_state(entry.addr, cc=self.cc)
+        print("Prototype", self.function_prototypes.kb.functions[entry.addr].prototype)
+        #TODO create argument analyzer
+        state = self.project.factory.call_state(entry.addr, cc=self.cc, args=[])
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_REGISTERS)
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_MEMORY)
+        state.options.add(angr.sim_options.STRICT_PAGE_ACCESS)
         state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
         simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True) # apparently veritesting makes some problems here
+        simgr.use_technique(self.technique)
         print("----Execute function:", entry.name)
         ret_sm = simgr.run(until=lambda sm: analyzer.check(sm)) #Fixme, if stop_at_bug false, continue to find all bugs
         self.alread_executed.add(entry.addr)

@@ -9,4 +9,5 @@ class Analyszer_Hook(angr.SimProcedure):
     #    counter = 0
 
     def run(self):
-        self.state.regs.rax = claripy.BVS("ret1", 32)
+        pass
+        #self.state.regs.rax = claripy.BVS("ret1", 32)

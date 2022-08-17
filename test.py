@@ -3,6 +3,8 @@ import os, sys
 from Analyzer import Analyzer
 from Vulnerability_Analyser import Vulnerability_Analyser
 
+import IPython
+
 def main(argv):
     if len(argv) < 2:
         return
@@ -15,7 +17,7 @@ def main(argv):
     #print(a.getListOfAllFunctionsAddresses())
     #print(a.getListOfCalledFunctions(a.function_prototypes.kb.functions["add1"]))
     #print(a.getListOfFunctionsInMain())
-    
+    IPython.embed()
 
 if __name__ == "__main__":
     main(sys.argv)
