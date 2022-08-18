@@ -1,6 +1,8 @@
 import logging
 logging.getLogger('angr').setLevel('CRITICAL') #level: WARNING, INFO, NOTSET, DEBUG, ERROR, CRITICAL
 
+import IPython
+
 import angr, claripy
 
 from Analyszer_Hook import Analyszer_Hook
@@ -16,11 +18,15 @@ class Analyzer:
         self.function_prototypes = self.project.analyses.CompleteCallingConventions(recover_variables=True,
                                                                                     force=True, cfg=self.cfg, 
                                                                                     analyze_callsites=True)
-        self.alread_executed = set()
+        self.already_executed = set()
         self.bugs = []
         #TODO, iteratively increase looper
-        self.loop_depth = 1
+        self.loop_depth = 5
+        self.path_limit = 100 #TODO if limiter is active, we need to have a coverage map to understand what was verified
         self.technique = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=self.loop_depth)#0, limit_concrete_loops=False)
+        self.technique2 = angr.exploration_techniques.LengthLimiter(self.path_limit)
+        self.technique3 = angr.exploration_techniques.Spiller()
+        self.namecounter = 0
 
     def getListOfFunctionsInMain(self):
         entry_func = self.getEntryFunction()
@@ -69,7 +75,7 @@ class Analyzer:
             if bug and stop_at_bug: 
                 return bug
 
-        if entry.addr in self.alread_executed:
+        if entry.addr in self.already_executed:
             return
 
         #hook functions called by current function
@@ -77,18 +83,31 @@ class Analyzer:
             self.project.hook(f.addr, hook=Analyszer_Hook(), length=5)
 
         #execute function symbolically
-        print("Prototype", self.function_prototypes.kb.functions[entry.addr].prototype)
+        #print("Prototype", self.function_prototypes.kb.functions[entry.addr].prototype)
+        prototype = self.function_prototypes.kb.functions[entry.addr].prototype
+        #IPython.embed() # can i get argument register? can i use radare etc 
         #TODO create argument analyzer
-        state = self.project.factory.call_state(entry.addr, cc=self.cc, args=[])
+        #args=[]
+        #for arg in prototype.args:
+        #    if type(arg) == angr.sim_type.SimTypeLongLong:
+        #        array = claripy.BVS('str', 50*8)
+        #        ptr_arg = angr.PointerWrapper(array, buffer=False) 
+        #        args.append(ptr_arg)#claripy.BVS('name' + str(self.namecounter), 64))
+        #        self.namecounter += 1
+
+        state = self.project.factory.call_state(entry.addr, cc=self.cc) #, args=args)
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_REGISTERS)
         state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_MEMORY)
-        state.options.add(angr.sim_options.STRICT_PAGE_ACCESS)
+        #state.options.add(angr.sim_options.STRICT_PAGE_ACCESS)
+        state.options.add(angr.sim_options.SYMBOLIC)
         state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
         simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True) # apparently veritesting makes some problems here
         simgr.use_technique(self.technique)
-        print("----Execute function:", entry.name)
+        simgr.use_technique(self.technique2)
+        simgr.use_technique(self.technique3)
+        print("----Symbolically execute function:", entry.name, "@", entry.addr)
         ret_sm = simgr.run(until=lambda sm: analyzer.check(sm)) #Fixme, if stop_at_bug false, continue to find all bugs
-        self.alread_executed.add(entry.addr)
+        self.already_executed.add(entry.addr)
         
         #unhook functions
         for f in functions: 

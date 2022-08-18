@@ -11,3 +11,5 @@ class Analyszer_Hook(angr.SimProcedure):
     def run(self):
         pass
         #self.state.regs.rax = claripy.BVS("ret1", 32)
+        #TODO: find all touched registers an set them to unconstrained. 
+        #      requires table and buttom up approach
