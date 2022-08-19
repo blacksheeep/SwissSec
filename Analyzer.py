@@ -21,11 +21,13 @@ class Analyzer:
         self.already_executed = set()
         self.bugs = []
         #TODO, iteratively increase looper
-        self.loop_depth = 5
-        self.path_limit = 100 #TODO if limiter is active, we need to have a coverage map to understand what was verified
-        self.technique = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=self.loop_depth)#0, limit_concrete_loops=False)
-        self.technique2 = angr.exploration_techniques.LengthLimiter(self.path_limit)
-        self.technique3 = angr.exploration_techniques.Spiller()
+        self.loop_depth = 4
+        self.path_limit = 20 #TODO if limiter is active, we need to have a coverage map to understand what was verified
+        self.loop_seer = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=self.loop_depth)#0, limit_concrete_loops=False)
+        self.path_limiter = angr.exploration_techniques.LengthLimiter(self.path_limit)
+        self.spiller = angr.exploration_techniques.Spiller()
+        self.memory_watcher = angr.exploration_techniques.MemoryWatcher()
+        self.dfs = angr.exploration_techniques.DFS()
         self.namecounter = 0
 
     def getListOfFunctionsInMain(self):
@@ -90,7 +92,7 @@ class Analyzer:
         #args=[]
         #for arg in prototype.args:
         #    if type(arg) == angr.sim_type.SimTypeLongLong:
-        #        array = claripy.BVS('str', 50*8)
+        #        array = claripy.BVS('str' + str(self.namecounter), 50*8)
         #        ptr_arg = angr.PointerWrapper(array, buffer=False) 
         #        args.append(ptr_arg)#claripy.BVS('name' + str(self.namecounter), 64))
         #        self.namecounter += 1
@@ -102,10 +104,11 @@ class Analyzer:
         state.options.add(angr.sim_options.SYMBOLIC)
         state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
         simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True) # apparently veritesting makes some problems here
-        simgr.use_technique(self.technique)
-        simgr.use_technique(self.technique2)
-        simgr.use_technique(self.technique3)
-        print("----Symbolically execute function:", entry.name, "@", entry.addr)
+        simgr.use_technique(self.loop_seer)
+        simgr.use_technique(self.path_limiter)
+        simgr.use_technique(self.spiller) #FIXME incompatible with memory watcher? 
+        simgr.use_technique(self.memory_watcher)
+        print("----Symbolically execute function:", entry.name, "@", hex(entry.addr))
         ret_sm = simgr.run(until=lambda sm: analyzer.check(sm)) #Fixme, if stop_at_bug false, continue to find all bugs
         self.already_executed.add(entry.addr)
         
@@ -120,4 +123,29 @@ class Analyzer:
             return bug
 
         return None
+
+
+    def runAnalysis(analyzer: Vulnerability_Analyser):
+        state = self.project.factory.entry_state()
+        state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_REGISTERS)
+        state.options.add(angr.sim_options.SYMBOL_FILL_UNCONSTRAINED_MEMORY)
+        #state.options.add(angr.sim_options.STRICT_PAGE_ACCESS)
+        state.options.add(angr.sim_options.SYMBOLIC)
+        state.register_plugin("heap", angr.state_plugins.heap.heap_ptmalloc.SimHeapPTMalloc())
+        simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True) # apparently veritesting makes some problems here
+        simgr.use_technique(self.loop_seer)
+        simgr.use_technique(self.path_limiter)
+        simgr.use_technique(self.spiller) #FIXME incompatible with memory watcher? 
+        simgr.use_technique(self.memory_watcher)
+        ret_sm = simgr.run(until=lambda sm: analyzer.check(sm)) #Fixme, if stop_at_bug false, continue to find all bugs
+        self.already_executed.add(entry.addr)
+
+        bug = analyzer.check(ret_sm)
+        if bug:
+            print("Found a bug", bug[0])
+            self.bugs.append(bug)
+            return bug
+
+        return None
+
             
