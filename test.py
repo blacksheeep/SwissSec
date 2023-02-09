@@ -8,7 +8,7 @@ import IPython
 def main(argv):
     if len(argv) < 2:
         return
-    a = Analyzer(argv[1])
+    a = Analyzer(argv[1], auto_load_libs=False)
     #a.printAllCalledFunctions(exclude_sysfunc=True)
     vulnerability_analyser = Vulnerability_Analyser(a.project)
     a.runFunctionBasedAnalysis(vulnerability_analyser)

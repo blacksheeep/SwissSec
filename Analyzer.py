@@ -11,7 +11,7 @@ from Vulnerability_Analyser import Vulnerability_Analyser
 class Analyzer: 
 
     def __init__(self, prog_name: str, auto_load_libs=False, analyze_uncalled=False):
-        self.project = angr.Project(prog_name, auto_load_libs=auto_load_libs)
+        self.project = angr.Project(prog_name, auto_load_libs=auto_load_libs, main_opts={'base_addr': 0x400000})
         self.cc = self.project.factory.cc()
         self.analyze_uncalled = analyze_uncalled #todo if enabled also analyse uncalled functions for weaknesses
         self.cfg = self.project.analyses.CFGFast()
@@ -22,12 +22,13 @@ class Analyzer:
         self.bugs = []
         #TODO, iteratively increase looper
         self.loop_depth = 4
-        self.path_limit = 20 #TODO if limiter is active, we need to have a coverage map to understand what was verified
+        self.path_limit = 40 #TODO if limiter is active, we need to have a coverage map to understand what was verified
         self.loop_seer = angr.exploration_techniques.LoopSeer(cfg=self.cfg, bound=self.loop_depth)#0, limit_concrete_loops=False)
         self.path_limiter = angr.exploration_techniques.LengthLimiter(self.path_limit)
         self.spiller = angr.exploration_techniques.Spiller()
         self.memory_watcher = angr.exploration_techniques.MemoryWatcher()
         self.dfs = angr.exploration_techniques.DFS()
+        self.threading = angr.exploration_techniques.Threading(threads=8)
         self.namecounter = 0
 
     def getListOfFunctionsInMain(self):
@@ -106,8 +107,9 @@ class Analyzer:
         simgr = self.project.factory.simgr(state, save_unconstrained=True)#, veritesting=True) # apparently veritesting makes some problems here
         simgr.use_technique(self.loop_seer)
         simgr.use_technique(self.path_limiter)
-        simgr.use_technique(self.spiller) #FIXME incompatible with memory watcher? 
+        #simgr.use_technique(self.spiller) #FIXME leads to crashes 
         simgr.use_technique(self.memory_watcher)
+        simgr.use_technique(self.dfs)
         print("----Symbolically execute function:", entry.name, "@", hex(entry.addr))
         ret_sm = simgr.run(until=lambda sm: analyzer.check(sm)) #Fixme, if stop_at_bug false, continue to find all bugs
         self.already_executed.add(entry.addr)
@@ -137,6 +139,8 @@ class Analyzer:
         simgr.use_technique(self.path_limiter)
         simgr.use_technique(self.spiller) #FIXME incompatible with memory watcher? 
         simgr.use_technique(self.memory_watcher)
+        #simgr.use_technique(self.dfs)
+        simgr.use_technique(self.threading)
         ret_sm = simgr.run(until=lambda sm: analyzer.check(sm)) #Fixme, if stop_at_bug false, continue to find all bugs
         self.already_executed.add(entry.addr)
 
